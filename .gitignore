@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Builds
+client/dist/
+dist/
+
+# Test artifacts
+coverage/
+
+# Local SQLite database (recreated automatically on first run)
+server/data/
+
+# Environment — real secrets/config stay local; .env.example is committed
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Internal planning docs (not part of the submitted app)
+.claude/
+CLAUDE.md
+PLAN.md
+RUBRIC_NOTES.md
+SPEC.md
+
+# Editor / OS noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
