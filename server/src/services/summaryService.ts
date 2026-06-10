@@ -48,10 +48,17 @@ export function getSummary(repo: ActivityRepo, period: Period, now: Date = new D
     totalKg: sums.get(category) ?? 0,
   }));
 
-  // One indexed SUM per week; the prepared statement is reused 8 times.
-  const trend: TrendPoint[] = lastNWeeks(today, TREND_WEEKS).map((week) => ({
+  // PERF: one GROUP BY query for all 8 weeks (was 8 queries, an N+1);
+  // weeks without data are zero-filled from the shared week calendar.
+  const weeks = lastNWeeks(today, TREND_WEEKS);
+  const weekSums = new Map(
+    repo
+      .sumByWeek({ from: weeks[0]?.from ?? today, to: weeks[weeks.length - 1]?.to ?? today })
+      .map((row) => [row.weekStart, row.total]),
+  );
+  const trend: TrendPoint[] = weeks.map((week) => ({
     weekStart: week.from,
-    totalKg: repo.sumBetween(week),
+    totalKg: weekSums.get(week.from) ?? 0,
   }));
 
   return {

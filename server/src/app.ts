@@ -1,8 +1,10 @@
 import express, { type Express } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import compression from 'compression';
 import type { Database } from 'better-sqlite3';
 import { env } from './lib/env';
+import { TtlCache } from './lib/cache';
 import { ActivityRepo } from './db/activityRepo';
 import { GoalRepo } from './db/goalRepo';
 import { createRateLimiters, type RateLimitOptions } from './middleware/rateLimiter';
@@ -33,6 +35,8 @@ export function createApp(options: AppOptions): Express {
 
   app.use(helmet());
   app.use(cors({ origin: env.CORS_ORIGIN }));
+  // PERF: gzip every compressible response (JSON summaries shrink ~5×).
+  app.use(compression());
   app.use(express.json({ limit: '10kb' }));
 
   const limiters = createRateLimiters(options.rateLimit);
@@ -40,13 +44,16 @@ export function createApp(options: AppOptions): Express {
 
   const activityRepo = new ActivityRepo(options.db);
   const goalRepo = new GoalRepo(options.db);
+  // PERF: shared 30s response cache for read-heavy summary/insights
+  // endpoints, invalidated by every activity write (see lib/cache.ts).
+  const responseCache = new TtlCache(30_000);
 
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok' });
   });
-  app.use('/api/activities', activitiesRouter(activityRepo, limiters.write));
-  app.use('/api/summary', summaryRouter(activityRepo));
-  app.use('/api/insights', insightsRouter(activityRepo));
+  app.use('/api/activities', activitiesRouter(activityRepo, limiters.write, responseCache));
+  app.use('/api/summary', summaryRouter(activityRepo, responseCache));
+  app.use('/api/insights', insightsRouter(activityRepo, responseCache));
   app.use('/api/goals', goalsRouter(goalRepo, activityRepo, limiters.write));
 
   app.use(notFoundHandler);

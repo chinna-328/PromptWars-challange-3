@@ -15,8 +15,11 @@ export function createDb(dbPath: string): Database.Database {
     fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   }
   const db = new Database(dbPath);
-  // WAL improves concurrent read performance for a local single-user app.
+  // PERF: WAL improves concurrent read performance for a local single-user
+  // app; synchronous=NORMAL is the standard WAL pairing — fsync only at
+  // checkpoints, several times faster writes, still crash-safe under WAL.
   db.pragma('journal_mode = WAL');
+  db.pragma('synchronous = NORMAL');
   db.pragma('foreign_keys = ON');
   db.exec(SCHEMA_SQL);
   return db;

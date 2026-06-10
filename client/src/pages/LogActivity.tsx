@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { ActivityRecord } from '@shared/types';
 import { api } from '../lib/api';
 import { useAsync } from '../hooks/useAsync';
@@ -10,13 +10,24 @@ import { ActivityList } from '../components/ActivityList';
 export default function LogActivity(): JSX.Element {
   usePageTitle('Log activity');
   const [editing, setEditing] = useState<ActivityRecord | null>(null);
-  const { data, error, loading, reload } = useAsync(() => api.listActivities(20), []);
+  const { data, error, loading, reload } = useAsync((signal) => api.listActivities(20, signal), []);
 
-  const handleDelete = async (activity: ActivityRecord): Promise<void> => {
-    await api.deleteActivity(activity.id);
-    if (editing?.id === activity.id) setEditing(null);
-    reload();
-  };
+  // PERF: stable handlers so the memoized ActivityList only re-renders
+  // when the list data itself changes, not on every parent render.
+  const handleEdit = useCallback((activity: ActivityRecord): void => {
+    setEditing(activity);
+    window.scrollTo({ top: 0 });
+  }, []);
+
+  const handleDelete = useCallback(
+    (activity: ActivityRecord): void => {
+      void api.deleteActivity(activity.id).then(() => {
+        setEditing((current) => (current?.id === activity.id ? null : current));
+        reload();
+      });
+    },
+    [reload],
+  );
 
   return (
     <>
@@ -34,16 +45,7 @@ export default function LogActivity(): JSX.Element {
         {loading && <p role="status">Loading activities…</p>}
         {error && <p role="alert">Could not load activities: {error}</p>}
         {data && (
-          <ActivityList
-            activities={data.data}
-            onEdit={(activity) => {
-              setEditing(activity);
-              window.scrollTo({ top: 0 });
-            }}
-            onDelete={(activity) => {
-              void handleDelete(activity);
-            }}
-          />
+          <ActivityList activities={data.data} onEdit={handleEdit} onDelete={handleDelete} />
         )}
       </section>
     </>

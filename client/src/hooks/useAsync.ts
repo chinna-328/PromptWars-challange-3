@@ -10,15 +10,20 @@ export interface AsyncState<T> {
 }
 
 /**
- * Runs an async loader on mount and whenever `deps` change, with stale
- * response protection (a slower earlier request can never overwrite a
- * newer one) and a manual reload for after mutations.
+ * Runs an async loader on mount and whenever `deps` change.
+ * PERF: each run gets an AbortSignal that is aborted on unmount or when
+ * deps change — in-flight requests are cancelled instead of completing as
+ * wasted work, which also eliminates stale-response races (a slow earlier
+ * request can never overwrite a newer one).
  *
- * @param loader - async function producing the data
+ * @param loader - async function producing the data; receives the signal
  * @param deps - dependency list that re-triggers the load
  * @returns data / error / loading plus reload()
  */
-export function useAsync<T>(loader: () => Promise<T>, deps: readonly unknown[]): AsyncState<T> {
+export function useAsync<T>(
+  loader: (signal: AbortSignal) => Promise<T>,
+  deps: readonly unknown[],
+): AsyncState<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,22 +32,21 @@ export function useAsync<T>(loader: () => Promise<T>, deps: readonly unknown[]):
   const reload = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     setLoading(true);
     setError(null);
-    loader()
+    loader(controller.signal)
       .then((result) => {
-        if (!cancelled) setData(result);
+        if (!controller.signal.aborted) setData(result);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Something went wrong');
+        if (controller.signal.aborted) return; // cancelled, not a failure
+        setError(err instanceof Error ? err.message : 'Something went wrong');
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
     // deps are caller-controlled; version re-triggers after mutations
   }, [...deps, version]);
 

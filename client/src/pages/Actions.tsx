@@ -11,8 +11,8 @@ export default function Actions(): JSX.Element {
   usePageTitle('Actions & goals');
   const [target, setTarget] = useState('');
   const [status, setStatus] = useState('');
-  const goal = useAsync(() => api.getGoalStatus(), []);
-  const insights = useAsync(() => api.getInsights(), []);
+  const goal = useAsync((signal) => api.getGoalStatus(signal), []);
+  const insights = useAsync((signal) => api.getInsights(signal), []);
 
   const handleSetGoal = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();

@@ -58,6 +58,6 @@ describe('Dashboard', () => {
     render(<Dashboard />);
     await screen.findByText('26.4 kg CO2e');
     await user.click(screen.getByRole('radio', { name: 'Today' }));
-    expect(api.getSummary).toHaveBeenLastCalledWith('day');
+    expect(api.getSummary).toHaveBeenLastCalledWith('day', expect.any(AbortSignal));
   });
 });

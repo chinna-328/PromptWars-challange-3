@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   activityTypesForCategory,
   CATEGORIES,
@@ -7,10 +7,35 @@ import {
   type ActivityType,
   type Category,
 } from '@shared/emissionFactors';
+import { calculateEmissions } from '@shared/calculateEmissions';
 import { todayISO } from '@shared/dates';
 import type { ActivityRecord } from '@shared/types';
 import { api } from '../lib/api';
 import { formatKg } from '../lib/format';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
+
+/** Quiet period before the live preview recomputes, in ms. */
+const PREVIEW_DEBOUNCE_MS = 300;
+
+/**
+ * Validates a raw quantity string against an activity's constraints.
+ * @param raw - the input field value
+ * @param factor - the selected activity's factor (for unit and cap)
+ * @returns an error message, or null when the quantity is valid
+ */
+function quantityError(
+  raw: string,
+  factor: (typeof EMISSION_FACTORS)[ActivityType],
+): string | null {
+  const value = Number(raw);
+  if (!raw || Number.isNaN(value) || value <= 0) {
+    return 'Enter a quantity greater than zero.';
+  }
+  if (value > factor.maxQuantity) {
+    return `Maximum is ${factor.maxQuantity} ${factor.unit} per entry.`;
+  }
+  return null;
+}
 
 /** Props for the create/edit activity form. */
 export interface ActivityFormProps {
@@ -37,6 +62,24 @@ export function ActivityForm({ editing, onSaved, onCancelEdit }: ActivityFormPro
   const [fieldError, setFieldError] = useState('');
   const [saving, setSaving] = useState(false);
   const quantityErrorId = useId();
+  const quantityRef = useRef<HTMLInputElement>(null);
+
+  // PERF: the preview recomputes after a 300ms typing pause (debounced),
+  // not on every keystroke; useMemo skips recomputation on other renders.
+  const debouncedQuantity = useDebouncedValue(quantity, PREVIEW_DEBOUNCE_MS);
+  const preview = useMemo(() => {
+    const parsedQuantity = Number(debouncedQuantity);
+    const factorForPreview = EMISSION_FACTORS[activityType];
+    if (
+      !debouncedQuantity ||
+      !Number.isFinite(parsedQuantity) ||
+      parsedQuantity <= 0 ||
+      parsedQuantity > factorForPreview.maxQuantity
+    ) {
+      return null;
+    }
+    return formatKg(calculateEmissions(activityType, parsedQuantity));
+  }, [debouncedQuantity, activityType]);
 
   useEffect(() => {
     if (!editing) return;
@@ -58,15 +101,13 @@ export function ActivityForm({ editing, onSaved, onCancelEdit }: ActivityFormPro
 
   const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
+    const validationMessage = quantityError(quantity, factor);
+    if (validationMessage) {
+      setFieldError(validationMessage);
+      quantityRef.current?.focus(); // move focus to the invalid field
+      return;
+    }
     const parsedQuantity = Number(quantity);
-    if (!quantity || Number.isNaN(parsedQuantity) || parsedQuantity <= 0) {
-      setFieldError('Enter a quantity greater than zero.');
-      return;
-    }
-    if (parsedQuantity > factor.maxQuantity) {
-      setFieldError(`Maximum is ${factor.maxQuantity} ${factor.unit} per entry.`);
-      return;
-    }
     setFieldError('');
     setSaving(true);
     try {
@@ -132,6 +173,7 @@ export function ActivityForm({ editing, onSaved, onCancelEdit }: ActivityFormPro
           <label htmlFor="quantity">Quantity ({factor.unit})</label>
           <input
             id="quantity"
+            ref={quantityRef}
             type="number"
             inputMode="decimal"
             min="0"
@@ -147,6 +189,9 @@ export function ActivityForm({ editing, onSaved, onCancelEdit }: ActivityFormPro
               {fieldError}
             </p>
           )}
+          <p className="form-hint" aria-live="polite">
+            {preview ? `≈ ${preview}` : ''}
+          </p>
         </div>
 
         <div className="field">

@@ -6,7 +6,7 @@ import { InsightCard } from '../components/InsightCard';
 /** Insights page: ranked, quantified suggestions from the rule engine. */
 export default function Insights(): JSX.Element {
   usePageTitle('Insights');
-  const { data, error, loading } = useAsync(() => api.getInsights(), []);
+  const { data, error, loading } = useAsync((signal) => api.getInsights(signal), []);
 
   return (
     <>

@@ -108,7 +108,9 @@ describe('isFutureDate / todayISO', () => {
     expect(isFutureDate('2026-06-09', '2026-06-10')).toBe(false);
   });
 
-  it('formats an injected clock as yyyy-mm-dd', () => {
-    expect(todayISO(new Date(Date.UTC(2026, 5, 10, 12)))).toBe('2026-06-10');
+  it('formats an injected clock as the local yyyy-mm-dd', () => {
+    // Local-time constructor → the local calendar day in any timezone.
+    expect(todayISO(new Date(2026, 5, 10, 12))).toBe('2026-06-10');
+    expect(todayISO(new Date(2026, 0, 1, 0, 30))).toBe('2026-01-01');
   });
 });

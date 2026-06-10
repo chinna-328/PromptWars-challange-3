@@ -10,6 +10,9 @@ import { EMISSION_FACTORS, type ActivityType } from './emissionFactors';
  * @returns emissions in kg CO2e, full precision (round only for display)
  * @throws RangeError when quantity is not a positive finite number or
  *   exceeds the per-entry cap for the activity
+ * @example
+ * calculateEmissions('car_petrol', 10); // => 1.92 (10 km × 0.192 kg/km)
+ * calculateEmissions('meal_red_meat', 2); // => 14.4
  */
 export function calculateEmissions(activityType: ActivityType, quantity: number): number {
   const factor = EMISSION_FACTORS[activityType];
@@ -29,9 +32,11 @@ export function calculateEmissions(activityType: ActivityType, quantity: number)
 
 /**
  * Rounds a kg CO2e value to one decimal for display.
- * Storage always keeps full precision (see SPEC.md emission model).
+ * Storage always keeps full precision.
  * @param value - kg CO2e at full precision
  * @returns value rounded to 1 decimal place
+ * @example
+ * roundKg(1.344); // => 1.3
  */
 export function roundKg(value: number): number {
   return Math.round(value * 10) / 10;

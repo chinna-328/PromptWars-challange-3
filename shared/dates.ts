@@ -57,12 +57,17 @@ export function addDays(iso: string, days: number): string {
 }
 
 /**
- * Returns today's ISO date for a given clock (injectable for tests).
+ * Returns today's ISO date in the *local* timezone (injectable for tests).
+ * Uses local calendar fields, not UTC — a user logging at 00:30 in
+ * UTC+5:30 means their local day, not yesterday's UTC day.
  * @param now - current time, defaults to the system clock
  * @returns today's ISO date string
  */
 export function todayISO(now: Date = new Date()): string {
-  return toISODate(now);
+  const year = String(now.getFullYear()).padStart(4, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /**

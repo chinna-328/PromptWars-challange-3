@@ -5,13 +5,21 @@ import {
   EMISSION_FACTORS,
   type ActivityType,
 } from '../../../shared/emissionFactors';
-import { isFutureDate, isValidISODate, todayISO } from '../../../shared/dates';
+import { addDays, isFutureDate, isValidISODate, todayISO } from '../../../shared/dates';
+
+/**
+ * One day of tolerance on the future-date check: the server may run in a
+ * different timezone than the user (e.g. a UTC host serving UTC+5:30
+ * clients), so "today" for the client can be "tomorrow" for the server.
+ * Anything beyond +1 day is still rejected.
+ */
+const TIMEZONE_GRACE_DAYS = 1;
 
 /** ISO yyyy-mm-dd string that must be a real, non-future calendar date. */
 const isoDateSchema = z
   .string()
   .refine(isValidISODate, { message: 'Date must be a valid yyyy-mm-dd date' })
-  .refine((value) => !isFutureDate(value, todayISO()), {
+  .refine((value) => !isFutureDate(value, addDays(todayISO(), TIMEZONE_GRACE_DAYS)), {
     message: 'Date cannot be in the future',
   });
 

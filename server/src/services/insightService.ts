@@ -1,13 +1,12 @@
 import { roundKg } from '../../../shared/calculateEmissions';
 import { EMISSION_FACTORS, CATEGORY_LABELS, type Category } from '../../../shared/emissionFactors';
 import type { Insight } from '../../../shared/types';
-import { buildWeekStats, SHORT_TRIP_KM, type WeekStats } from './insightStats';
-import type { ActivityRecord } from '../../../shared/types';
+import { SHORT_TRIP_KM, type WeekStats } from './insightStats';
 
 /** Input to the pure insights engine. */
 export interface InsightInput {
-  /** Activities from the current rolling 7-day window. */
-  thisWeek: ActivityRecord[];
+  /** Aggregated stats for the current rolling 7-day window. */
+  stats: WeekStats;
   /** Total emissions of the previous rolling 7-day window. */
   lastWeekKg: number;
 }
@@ -194,14 +193,15 @@ const RULES: Rule[] = [
  * The rule-based insights engine. Pure and deterministic: applies every
  * rule to the aggregated week stats and returns the matching insights
  * ranked by estimated weekly saving (largest first). Every insight
- * quantifies its saving — vague advice is forbidden by SPEC.md.
+ * quantifies its saving — vague, unquantified advice is forbidden.
+ * PERF: consumes pre-aggregated WeekStats (built by SQL GROUP BY), so a
+ * full evaluation is O(rules), independent of activity volume.
  *
- * @param input - this week's records and last week's total
- * @returns ranked insights (possibly empty is impossible: firstSteps covers the empty week)
+ * @param input - this week's aggregated stats and last week's total
+ * @returns ranked insights (never empty: firstSteps covers the empty week)
  */
 export function computeInsights(input: InsightInput): Insight[] {
-  const stats = buildWeekStats(input.thisWeek);
-  return RULES.map((rule) => rule(stats, input))
+  return RULES.map((rule) => rule(input.stats, input))
     .filter((insight): insight is Insight => insight !== null)
     .sort((a, b) => b.estimatedWeeklySavingKg - a.estimatedWeeklySavingKg);
 }

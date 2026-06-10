@@ -24,7 +24,11 @@ const GLOBAL_AVG_WEEKLY_KG = 90;
 export default function Dashboard(): JSX.Element {
   usePageTitle('Dashboard');
   const [period, setPeriod] = useState<Period>('week');
-  const { data: summary, error, loading } = useAsync(() => api.getSummary(period), [period]);
+  const {
+    data: summary,
+    error,
+    loading,
+  } = useAsync((signal) => api.getSummary(period, signal), [period]);
 
   // Derived values are memoized so re-renders don't recompute them.
   const topCategory = useMemo(() => {

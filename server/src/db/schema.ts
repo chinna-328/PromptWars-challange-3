@@ -15,9 +15,14 @@ CREATE TABLE IF NOT EXISTS activities (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Date index: every summary/trend query filters on date ranges, so
--- aggregations stay index-backed instead of scanning the table.
-CREATE INDEX IF NOT EXISTS idx_activities_date ON activities (date);
+-- PERF: covering composite index. Every summary/trend/insight query filters
+-- on a date range and aggregates emissions_kg (often grouped by category),
+-- so including all three columns lets SQLite answer aggregates entirely
+-- from the index ("USING COVERING INDEX" — verified in PERFORMANCE.md)
+-- with zero table row lookups.
+DROP INDEX IF EXISTS idx_activities_date; -- superseded by the covering index
+CREATE INDEX IF NOT EXISTS idx_activities_date_category
+  ON activities (date, category, emissions_kg);
 
 CREATE TABLE IF NOT EXISTS goals (
   id INTEGER PRIMARY KEY,

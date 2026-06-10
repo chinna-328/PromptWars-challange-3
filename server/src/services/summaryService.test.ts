@@ -84,6 +84,15 @@ describe('getSummary', () => {
     expect(month.previousTotalKg).toBeCloseTo(2, 5);
   });
 
+  it('buckets week-boundary days correctly: Sunday joins its Monday, next Monday starts fresh', () => {
+    const repo = new ActivityRepo(createDb(':memory:'));
+    repo.create(entry({ emissionsKg: 1, date: '2026-06-07' })); // Sunday → week of 06-01
+    repo.create(entry({ emissionsKg: 2, date: '2026-06-08' })); // Monday → week of 06-08
+    const summary = getSummary(repo, 'week', NOW);
+    expect(summary.trend[6]).toEqual({ weekStart: '2026-06-01', totalKg: 1 });
+    expect(summary.trend[7]).toEqual({ weekStart: '2026-06-08', totalKg: 2 });
+  });
+
   it('handles an empty database without errors', () => {
     const summary = getSummary(new ActivityRepo(createDb(':memory:')), 'week', NOW);
     expect(summary.totalKg).toBe(0);

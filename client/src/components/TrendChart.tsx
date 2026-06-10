@@ -26,8 +26,12 @@ export const TrendChart = memo(function TrendChart({ trend }: TrendChartProps): 
     })
     .join(' ');
 
+  const latest = trend[trend.length - 1];
   return (
     <div className="trend">
+      <p className="visually-hidden">
+        {`Line chart of weekly emissions over ${trend.length} weeks; the latest week is ${formatKg(latest?.totalKg ?? 0)}. The same numbers follow as a table.`}
+      </p>
       <svg
         aria-hidden="true"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}

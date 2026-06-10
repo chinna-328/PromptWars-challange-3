@@ -53,8 +53,8 @@ export const api = {
   },
 
   /** Lists recent activities, newest first. */
-  listActivities(limit = 20): Promise<ActivityListResponse> {
-    return request(`/api/activities?limit=${limit}`);
+  listActivities(limit = 20, signal?: AbortSignal): Promise<ActivityListResponse> {
+    return request(`/api/activities?limit=${limit}`, signal ? { signal } : undefined);
   },
 
   /** Fully updates an activity; emissions are recomputed server-side. */
@@ -68,18 +68,18 @@ export const api = {
   },
 
   /** Fetches dashboard totals, breakdown and trend for a period. */
-  getSummary(period: Period): Promise<Summary> {
-    return request(`/api/summary?period=${period}`);
+  getSummary(period: Period, signal?: AbortSignal): Promise<Summary> {
+    return request(`/api/summary?period=${period}`, signal ? { signal } : undefined);
   },
 
   /** Fetches ranked, quantified insights. */
-  getInsights(): Promise<{ data: Insight[] }> {
-    return request('/api/insights');
+  getInsights(signal?: AbortSignal): Promise<{ data: Insight[] }> {
+    return request('/api/insights', signal ? { signal } : undefined);
   },
 
   /** Fetches the goal status (target, progress, streak). */
-  getGoalStatus(): Promise<GoalStatus> {
-    return request('/api/goals');
+  getGoalStatus(signal?: AbortSignal): Promise<GoalStatus> {
+    return request('/api/goals', signal ? { signal } : undefined);
   },
 
   /** Sets a new weekly target and returns the refreshed status. */

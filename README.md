@@ -37,6 +37,27 @@ source citations), the `calculateEmissions` pure function, date helpers and
 API types are used by both sides — the server computes authoritative values,
 the client reuses the same code only for previews and labels.
 
+Request flow: `UI → api client → route → rate limit → zod validation →
+service (pure logic) → prepared statement → SQLite`, with one error
+boundary translating every failure into `{ error: { code, message } }`.
+
+### Design decisions
+
+- **SQLite via better-sqlite3** — a single-user local app needs zero ops; a
+  synchronous embedded DB removes connection pools and async overhead while
+  prepared statements keep it injection-proof.
+- **Server-side emission computation** — clients are never trusted with
+  `emissionsKg`; the strict zod schema rejects it and the server recomputes
+  from the shared factor table (see SECURITY.md).
+- **Rule-based insights, not ML** — 11 pure deterministic rules are fully
+  unit-testable, explainable to the user, and quantify every suggestion.
+- **Hand-rolled SVG charts** — a chart library would dwarf the rest of the
+  bundle; two small components + paired data tables are faster and more
+  accessible.
+- **Pre-aggregated reads** — every dashboard number is a SQL aggregate over
+  a covering index, cached for 30s and invalidated on writes
+  (see PERFORMANCE.md).
+
 ## Features
 
 - **Activity logger** — category → activity → quantity (unit shown) → date →
@@ -65,7 +86,7 @@ automatically.
 ```bash
 npm run lint       # ESLint (typescript-eslint + jsx-a11y, error level)
 npm run typecheck  # tsc strict, client + server
-npm test           # 138 tests: unit + API (supertest) + component + integration
+npm test           # 151 tests: unit + API + performance + component + integration
 npm run coverage   # coverage report (thresholds enforced at 90%)
 npm run build      # typecheck + production client bundle
 ```
@@ -74,11 +95,15 @@ npm run build      # typecheck + production client bundle
 
 ### Code quality
 
-TypeScript `strict` everywhere (plus `noUncheckedIndexedAccess`), zero `any`,
-zero `@ts-ignore`. Every exported function has JSDoc. Small single-purpose
-modules; no magic numbers — every emission factor and rule threshold is a
-named, cited constant. One `AppError` type + a single error boundary; a tiny
-`logger` util instead of `console`.
+TypeScript `strict` everywhere plus `noUncheckedIndexedAccess`,
+`exactOptionalPropertyTypes` and `noImplicitReturns`; zero `any`, zero
+`@ts-ignore`. ESLint enforces complexity ≤ 10, max nesting depth 3 and
+function-length budgets at error level. Every exported function has JSDoc
+(with `@example` on the core calculations). Small single-purpose modules; no
+magic numbers — every emission factor and rule threshold is a named, cited
+constant. One `AppError` type + a single error boundary; a tiny `logger`
+util instead of `console`. CI (GitHub Actions) runs lint → typecheck →
+tests + coverage → build on every push.
 
 ### Security
 
@@ -90,24 +115,33 @@ with full server-side logging, env validated at startup.
 
 ### Efficiency
 
-All aggregation happens in SQL (`SUM`/`GROUP BY` over an indexed `date`
-column) — row data is never fetched to reduce in JS. Pure calculation
-functions are O(n) and trivially memoizable. React: route-level code
-splitting (`React.lazy`), `React.memo` on chart/list components, `useMemo`
-for derived dashboard values. No heavyweight dependencies — native `Intl`
-for formatting, hand-rolled SVG charts instead of a chart library.
+Documented with measurements in [PERFORMANCE.md](./PERFORMANCE.md).
+Highlights: every aggregate runs as SQL `SUM`/`GROUP BY` answered entirely
+from a **covering index** (verified by `EXPLAIN QUERY PLAN`, locked in by a
+test — a full dashboard aggregation over 10,000 rows takes ~0.8 ms); the
+8-week trend is one `GROUP BY` query, not 8; insights consume per-type SQL
+aggregates (O(activity types), not O(rows)); summary/insights responses are
+served from a 30s TTL cache invalidated on writes; gzip on all responses.
+Client: route-level code splitting plus a separate long-term-cached vendor
+chunk (app entry 2.4 kB gzipped), `React.memo`/`useMemo`/`useCallback` on
+hot paths, debounced live preview, `AbortController` on every fetch, no
+heavyweight dependencies (~66 kB total gzipped JS).
 
 ### Testing
 
-138 tests across four layers, named as behavioural sentences:
+151 tests across five layers, named as behavioural sentences:
 
 - unit — every emission factor's input→output, zero/negative/NaN/over-cap
   rejection, rounding, week/month boundary date maths, every insight rule,
   streak & budget logic;
 - API (supertest) — happy paths, 400 validation, 404, 413, 429 rate limits,
   security headers, error envelope shape;
+- performance — cache serves within TTL without re-querying, every
+  aggregate uses the covering index (EXPLAIN-verified), 10k-row aggregation
+  under 100 ms;
 - component (Testing Library, accessible queries only) — labels, aria-live
-  announcements, chart/table equivalence, radio period switching;
+  announcements, debounced preview, chart/table equivalence, focus on
+  invalid fields;
 - integration — log activities → dashboard totals match the shared
   calculation exactly.
 
@@ -116,15 +150,16 @@ lines / 100% functions**, enforced ≥90% via vitest thresholds.
 
 ### Accessibility
 
-Semantic landmarks (`header`/`nav`/`main`/`section`), skip-to-content link,
-focus moved to `<main>` on route change, `lang="en"`, per-route titles.
-Every input has a `<label htmlFor>`; errors are linked via
-`aria-describedby` and results announced in `aria-live="polite"` regions.
-Charts are decorative (`aria-hidden`) and always paired with real data
-tables. Color contrast ≥ 4.5:1; direction/meaning always duplicated in text
-(▲ + "up 12% vs previous period"). Visible `:focus-visible` outlines,
-`prefers-reduced-motion` respected, `eslint-plugin-jsx-a11y` at error level
-with zero violations.
+Built to WCAG 2.1 AA. Semantic landmarks (`header`/`nav`/`main`/`section`),
+skip-to-content link, focus moved to `<main>` on route change, `lang="en"`,
+per-route titles. Every input has a `<label htmlFor>`; errors are linked via
+`aria-describedby`, announced in `aria-live="polite"` regions, and focus
+moves to the first invalid field on submit. Charts carry a screen-reader
+summary and are always paired with real data tables (decorative SVG parts
+`aria-hidden`). Color contrast ≥ 4.5:1; direction/meaning always duplicated
+in text (▲ + "up 12% vs previous period"). Visible `:focus-visible`
+outlines, `prefers-reduced-motion` respected, `eslint-plugin-jsx-a11y` at
+error level with zero violations.
 
 ## Emission factor sources
 

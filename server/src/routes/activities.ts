@@ -1,5 +1,6 @@
 import { Router, type RequestHandler } from 'express';
 import type { ActivityRepo } from '../db/activityRepo';
+import type { TtlCache } from '../lib/cache';
 import {
   activityInputSchema,
   idParamSchema,
@@ -18,16 +19,30 @@ import {
 
 /**
  * CRUD routes for /api/activities. Handlers stay thin: validation is
- * middleware, logic lives in activityService.
+ * middleware, logic lives in activityService. Every mutation invalidates
+ * the summary/insights response cache and is marked `no-store`.
  *
  * @param repo - activity repository
  * @param writeLimiter - stricter rate limiter for mutating endpoints
+ * @param cache - shared response cache to invalidate on writes
  * @returns configured router
  */
-export function activitiesRouter(repo: ActivityRepo, writeLimiter: RequestHandler): Router {
+export function activitiesRouter(
+  repo: ActivityRepo,
+  writeLimiter: RequestHandler,
+  cache: TtlCache,
+): Router {
   const router = Router();
 
-  router.post('/', writeLimiter, validate(activityInputSchema), (_req, res) => {
+  // Mutations must never be cached by any intermediary, and they make the
+  // cached summary/insights stale — clear before responding.
+  const onWrite: RequestHandler = (_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    cache.clear();
+    next();
+  };
+
+  router.post('/', writeLimiter, onWrite, validate(activityInputSchema), (_req, res) => {
     const input = parsed<ActivityInputParsed>(res.locals, 'body');
     res.status(201).json(createActivity(repo, input));
   });
@@ -45,6 +60,7 @@ export function activitiesRouter(repo: ActivityRepo, writeLimiter: RequestHandle
   router.put(
     '/:id',
     writeLimiter,
+    onWrite,
     validate(idParamSchema, 'params'),
     validate(activityInputSchema),
     (_req, res) => {
@@ -54,7 +70,7 @@ export function activitiesRouter(repo: ActivityRepo, writeLimiter: RequestHandle
     },
   );
 
-  router.delete('/:id', writeLimiter, validate(idParamSchema, 'params'), (_req, res) => {
+  router.delete('/:id', writeLimiter, onWrite, validate(idParamSchema, 'params'), (_req, res) => {
     const { id } = parsed<{ id: number }>(res.locals, 'params');
     deleteActivity(repo, id);
     res.status(204).end();

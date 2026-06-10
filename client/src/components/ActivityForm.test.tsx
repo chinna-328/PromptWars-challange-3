@@ -84,6 +84,22 @@ describe('ActivityForm', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('shows a debounced live emissions preview while typing', async () => {
+    const user = userEvent.setup();
+    render(<ActivityForm onSaved={() => undefined} />);
+    await user.type(screen.getByLabelText(/quantity/i), '10');
+    // 10 km petrol car × 0.192 = 1.92 → appears after the 300ms debounce.
+    expect(await screen.findByText('≈ 1.9 kg CO2e')).toBeInTheDocument();
+  });
+
+  it('moves focus to the quantity field when submission is invalid', async () => {
+    const user = userEvent.setup();
+    render(<ActivityForm onSaved={() => undefined} />);
+    await user.type(screen.getByLabelText(/quantity/i), '0');
+    await user.click(screen.getByRole('button', { name: 'Log activity' }));
+    expect(screen.getByLabelText(/quantity/i)).toHaveFocus();
+  });
+
   it('surfaces the server validation message when the API rejects', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       jsonResponse({ error: { code: 'VALIDATION_ERROR', message: 'date: cannot be future' } }, 400),

@@ -1,53 +1,24 @@
 import type { Database, Statement } from 'better-sqlite3';
 import type { ActivityRecord } from '../../../shared/types';
-import type { ActivityType, Category } from '../../../shared/emissionFactors';
+import type { Category } from '../../../shared/emissionFactors';
 import type { DateRange } from '../../../shared/dates';
+import {
+  toRecord,
+  type ActivityRow,
+  type ActivityWriteModel,
+  type ListOptions,
+  type TypeAggregateRow,
+} from './activityRows';
 
-/** Raw row shape as stored in SQLite (snake_case columns). */
-interface ActivityRow {
-  id: number;
-  category: Category;
-  activity_type: ActivityType;
-  quantity: number;
-  emissions_kg: number;
-  date: string;
-  note: string | null;
-  created_at: string;
-}
-
-/** Fields persisted for a new/updated activity (emissions pre-computed). */
-export interface ActivityWriteModel {
-  category: Category;
-  activityType: ActivityType;
-  quantity: number;
-  emissionsKg: number;
-  date: string;
-  note: string | null;
-}
-
-/** Options for the paginated list query. */
-export interface ListOptions {
-  from: string;
-  to: string;
-  limit: number;
-  offset: number;
-}
-
-const toRecord = (row: ActivityRow): ActivityRecord => ({
-  id: row.id,
-  category: row.category,
-  activityType: row.activity_type,
-  quantity: row.quantity,
-  emissionsKg: row.emissions_kg,
-  date: row.date,
-  note: row.note,
-  createdAt: row.created_at,
-});
+export type { ActivityWriteModel, ListOptions, TypeAggregateRow } from './activityRows';
 
 /**
  * Data access for the `activities` table. Every query is a prepared
  * statement compiled once in the constructor and reused — no SQL is ever
  * built from string concatenation (see SECURITY.md).
+ * PERF: statements are prepared once at construction (app lifetime), never
+ * per request; all aggregates run as SQL SUM/GROUP BY over the covering
+ * index — row data is never fetched to reduce in JS.
  */
 export class ActivityRepo {
   private readonly insertStmt: Statement;
@@ -58,6 +29,8 @@ export class ActivityRepo {
   private readonly countStmt: Statement;
   private readonly sumStmt: Statement;
   private readonly sumByCategoryStmt: Statement;
+  private readonly sumByWeekStmt: Statement;
+  private readonly statsByTypeStmt: Statement;
   private readonly recentDatesStmt: Statement;
 
   constructor(db: Database) {
@@ -87,6 +60,28 @@ export class ActivityRepo {
     this.sumByCategoryStmt = db.prepare(
       `SELECT category, COALESCE(SUM(emissions_kg), 0) AS total
        FROM activities WHERE date BETWEEN ? AND ? GROUP BY category`,
+    );
+    // PERF: the whole 8-week trend in ONE indexed query instead of one
+    // query per week (N+1). The DATE() expression snaps each row to the
+    // Monday of its week (%w: 0=Sunday…6=Saturday), matching weekRange()
+    // in shared/dates.ts exactly (verified by a boundary unit test).
+    this.sumByWeekStmt = db.prepare(
+      `SELECT DATE(date, '-' || ((CAST(strftime('%w', date) AS INTEGER) + 6) % 7) || ' days')
+         AS weekStart, COALESCE(SUM(emissions_kg), 0) AS total
+       FROM activities WHERE date BETWEEN @from AND @to
+       GROUP BY weekStart ORDER BY weekStart`,
+    );
+    // PERF: pre-aggregates a week per activity type in SQL so the insights
+    // engine runs on O(activity types) rows, never O(all logged rows).
+    this.statsByTypeStmt = db.prepare(
+      `SELECT activity_type AS activityType, category,
+              COUNT(*) AS entryCount,
+              COALESCE(SUM(quantity), 0) AS totalQuantity,
+              COALESCE(SUM(emissions_kg), 0) AS totalKg,
+              COALESCE(SUM(CASE WHEN quantity <= @shortKm THEN quantity ELSE 0 END), 0) AS shortKm,
+              COALESCE(SUM(CASE WHEN quantity <= @shortKm THEN 1 ELSE 0 END), 0) AS shortCount
+       FROM activities WHERE date BETWEEN @from AND @to
+       GROUP BY activity_type, category`,
     );
     this.recentDatesStmt = db.prepare(
       'SELECT DISTINCT date FROM activities ORDER BY date DESC LIMIT ?',
@@ -179,6 +174,34 @@ export class ActivityRepo {
       category: Category;
       total: number;
     }[];
+  }
+
+  /**
+   * Sums emissions per Monday-aligned week within a date range — the whole
+   * trend in a single GROUP BY query.
+   * @param range - inclusive date range spanning the trend window
+   * @returns weekStart (Monday ISO date) → total kg, for weeks with data
+   */
+  sumByWeek(range: DateRange): { weekStart: string; total: number }[] {
+    return this.sumByWeekStmt.all({ from: range.from, to: range.to }) as {
+      weekStart: string;
+      total: number;
+    }[];
+  }
+
+  /**
+   * Aggregates a date range per activity type in SQL (counts, quantity,
+   * emissions, short-trip breakdown) for the insights engine.
+   * @param range - inclusive date range
+   * @param shortTripKm - cutoff for the short-trip conditional sums
+   * @returns one aggregate row per activity type present in the range
+   */
+  statsByType(range: DateRange, shortTripKm: number): TypeAggregateRow[] {
+    return this.statsByTypeStmt.all({
+      from: range.from,
+      to: range.to,
+      shortKm: shortTripKm,
+    }) as TypeAggregateRow[];
   }
 
   /**

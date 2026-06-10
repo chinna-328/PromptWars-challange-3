@@ -17,10 +17,26 @@ import type { RateLimitOptions } from '../server/src/middleware/rateLimiter';
  * @returns Express app ready for supertest
  */
 export function makeTestApp(rateLimit?: RateLimitOptions): Express {
-  return createApp({
-    db: createDb(':memory:'),
+  return makeTestAppWithDb(rateLimit).app;
+}
+
+/**
+ * Like {@link makeTestApp} but also exposes the database handle, for tests
+ * that need to manipulate rows behind the API (e.g. cache behaviour).
+ *
+ * @param rateLimit - optional limiter overrides
+ * @returns the app plus its underlying in-memory database
+ */
+export function makeTestAppWithDb(rateLimit?: RateLimitOptions): {
+  app: Express;
+  db: ReturnType<typeof createDb>;
+} {
+  const db = createDb(':memory:');
+  const app = createApp({
+    db,
     rateLimit: rateLimit ?? { limit: 100000, writeLimit: 100000 },
   });
+  return { app, db };
 }
 
 /**

@@ -14,12 +14,30 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       // Express error handlers must keep 4 params; `_` marks intentional.
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+      ],
       'no-console': 'error',
       complexity: ['error', 10],
+      'max-depth': ['error', 3],
+      'max-lines-per-function': ['error', { max: 60, skipBlankLines: true, skipComments: true }],
       eqeqeq: ['error', 'always'],
       'prefer-const': 'error',
     },
+  },
+  {
+    // JSX markup is declarative, not logic — components get a higher line
+    // budget; the complexity cap (10) still applies everywhere.
+    files: ['**/*.tsx'],
+    rules: {
+      'max-lines-per-function': ['error', { max: 180, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
+    // Test bodies are flat describe/it lists, not functions to decompose.
+    files: ['**/*.test.{ts,tsx}', 'tests/**'],
+    rules: { 'max-lines-per-function': 'off' },
   },
   {
     files: ['client/src/**/*.{ts,tsx}'],

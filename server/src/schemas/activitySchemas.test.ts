@@ -41,11 +41,17 @@ describe('activityInputSchema', () => {
   });
 
   it('rejects future dates and impossible calendar dates', () => {
-    expect(activityInputSchema.safeParse({ ...valid, date: addDays(todayISO(), 1) }).success).toBe(
+    expect(activityInputSchema.safeParse({ ...valid, date: addDays(todayISO(), 2) }).success).toBe(
       false,
     );
     expect(activityInputSchema.safeParse({ ...valid, date: '2026-02-30' }).success).toBe(false);
     expect(activityInputSchema.safeParse({ ...valid, date: '10/06/2026' }).success).toBe(false);
+  });
+
+  it('tolerates one day of clock skew (client timezone ahead of the server)', () => {
+    expect(activityInputSchema.safeParse({ ...valid, date: addDays(todayISO(), 1) }).success).toBe(
+      true,
+    );
   });
 
   it('rejects notes longer than 200 characters', () => {

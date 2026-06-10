@@ -18,8 +18,15 @@ export const CategoryBreakdown = memo(function CategoryBreakdown({
   byCategory,
 }: CategoryBreakdownProps): JSX.Element {
   const max = Math.max(...byCategory.map((row) => row.totalKg), 1);
+  const total = byCategory.reduce((sum, row) => sum + row.totalKg, 0);
+  const top = [...byCategory].sort((a, b) => b.totalKg - a.totalKg)[0];
   return (
     <div className="breakdown">
+      <p className="visually-hidden">
+        {total > 0 && top
+          ? `Bar chart: ${formatKg(total)} in total, the largest source is ${CATEGORY_LABELS[top.category]} at ${formatKg(top.totalKg)}. The same numbers follow as a table.`
+          : 'Bar chart: nothing logged in this period yet. The same numbers follow as a table.'}
+      </p>
       <div aria-hidden="true" className="bars">
         {byCategory.map((row) => (
           <div key={row.category} className="bar-row">
