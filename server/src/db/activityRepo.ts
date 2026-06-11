@@ -1,3 +1,8 @@
+/**
+ * Data access for the activities table. Key invariant: prepared statements
+ * only (prepared once at construction), and every aggregate (SUM/GROUP BY)
+ * is computed in SQL against the covering index — never in JS.
+ */
 import type { Database, Statement } from 'better-sqlite3';
 import type { ActivityRecord } from '../../../shared/types';
 import type { Category } from '../../../shared/emissionFactors';

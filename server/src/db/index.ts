@@ -1,3 +1,8 @@
+/**
+ * SQLite connection factory: opens the database, applies pragmas and the
+ * idempotent schema. Key invariant: every connection (file or :memory:)
+ * goes through createDb so tests and production share identical setup.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';

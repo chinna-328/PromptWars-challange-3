@@ -1,3 +1,8 @@
+/**
+ * Rate limiting for the API: a general limiter on all routes and a
+ * stricter one for writes. Key invariant: limits are injectable so tests
+ * can exercise 429 behaviour without waiting out real windows.
+ */
 import { rateLimit, type RateLimitRequestHandler } from 'express-rate-limit';
 
 /** Tunable limits — tests inject high values, prod uses the defaults. */

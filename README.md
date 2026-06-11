@@ -15,6 +15,9 @@ cards → weekly budget + streaks).
 
 ## Architecture
 
+Full detail — request flow, folder map and design-decision rationale — lives
+in [ARCHITECTURE.md](./ARCHITECTURE.md). The shape:
+
 ```
 ┌──────────────────────────┐        ┌─────────────────────────────┐
 │  client/  React 18 + TS  │  /api  │  server/  Express + TS      │
@@ -72,6 +75,16 @@ boundary translating every failure into `{ error: { code, message } }`.
 - **Understand** — what CO2e means, where every factor comes from, and how
   the maths works.
 
+## Design
+
+A dark "observatory" theme: near-black graphite surfaces, a luminous emerald
+accent used sparingly (primary action, progress, trend line) and the four
+category hues — transport teal, energy amber, food green, shopping violet.
+Type is Space Grotesk (display/data), Hanken Grotesk (body) and JetBrains
+Mono (units), loaded from Google Fonts; navigation icons are inlined from
+[Lucide](https://lucide.dev) (ISC licence). Every text/background pair holds
+WCAG AA contrast ≥ 4.5:1 on the dark canvas.
+
 ## Getting started
 
 ```bash
@@ -86,7 +99,7 @@ automatically.
 ```bash
 npm run lint       # ESLint (typescript-eslint + jsx-a11y, error level)
 npm run typecheck  # tsc strict, client + server
-npm test           # 151 tests: unit + API + performance + component + integration
+npm test           # 152 tests: unit + API + performance + component + integration
 npm run coverage   # coverage report (thresholds enforced at 90%)
 npm run build      # typecheck + production client bundle
 ```
@@ -129,7 +142,7 @@ heavyweight dependencies (~66 kB total gzipped JS).
 
 ### Testing
 
-151 tests across five layers, named as behavioural sentences:
+152 tests across five layers, named as behavioural sentences:
 
 - unit — every emission factor's input→output, zero/negative/NaN/over-cap
   rejection, rounding, week/month boundary date maths, every insight rule,

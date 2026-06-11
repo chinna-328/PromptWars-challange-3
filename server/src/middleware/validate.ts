@@ -1,3 +1,8 @@
+/**
+ * Zod validation middleware factory for body/query/params.
+ * Key invariant: no route logic ever sees unvalidated input — handlers
+ * read the parsed value from res.locals, never from req directly.
+ */
 import type { RequestHandler } from 'express';
 import type { ZodTypeAny } from 'zod';
 import { validationError } from '../lib/AppError';

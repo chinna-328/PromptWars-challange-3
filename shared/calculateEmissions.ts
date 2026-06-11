@@ -1,3 +1,8 @@
+/**
+ * The single emission calculation shared by server and client.
+ * Key invariant: one formula, one rounding rule — server persistence and
+ * the client's live preview can never disagree.
+ */
 import { EMISSION_FACTORS, type ActivityType } from './emissionFactors';
 
 /**

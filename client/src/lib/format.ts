@@ -1,3 +1,8 @@
+/**
+ * Pure display formatters for emissions values and period change.
+ * Key invariant: direction ("down 12% vs previous period") is always
+ * spelled out in text — never conveyed by color or an arrow alone.
+ */
 import { roundKg } from '@shared/calculateEmissions';
 
 /**

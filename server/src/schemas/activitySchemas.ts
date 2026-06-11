@@ -1,3 +1,8 @@
+/**
+ * Zod schemas for every activity-related API boundary (body, query,
+ * params). Key invariant: everything a client can send is parsed and
+ * bounded here before service logic runs.
+ */
 import { z } from 'zod';
 import {
   ACTIVITY_TYPES,

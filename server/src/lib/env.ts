@@ -1,3 +1,8 @@
+/**
+ * Startup-validated environment configuration.
+ * Key invariant: the server never reads process.env directly elsewhere —
+ * a misconfigured deployment fails fast here, at boot.
+ */
 import { z } from 'zod';
 
 /**

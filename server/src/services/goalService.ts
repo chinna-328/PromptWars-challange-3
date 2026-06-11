@@ -1,3 +1,8 @@
+/**
+ * Weekly goal status: target vs current Monday-week emissions plus the
+ * logging streak. Key invariant: the math is pure and operates on data
+ * the repository has already aggregated in SQL.
+ */
 import { addDays, todayISO, weekRange } from '../../../shared/dates';
 import type { GoalStatus } from '../../../shared/types';
 import type { ActivityRepo } from '../db/activityRepo';

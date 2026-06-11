@@ -1,3 +1,8 @@
+/**
+ * Dashboard summary: period totals, category breakdown, change vs the
+ * previous period and the 8-week trend. Key invariant: all aggregation
+ * happens in SQL (SUM/GROUP BY); JS only zero-fills and shapes the result.
+ */
 import {
   lastNWeeks,
   previousRange,

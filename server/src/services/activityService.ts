@@ -1,3 +1,8 @@
+/**
+ * Activity CRUD business logic between routes and the repository.
+ * Key invariant: emissions are always computed server-side from the shared
+ * factors — a client-supplied emissions value is never accepted.
+ */
 import { calculateEmissions } from '../../../shared/calculateEmissions';
 import type { ActivityListResponse, ActivityRecord } from '../../../shared/types';
 import type { ActivityRepo, ActivityWriteModel } from '../db/activityRepo';

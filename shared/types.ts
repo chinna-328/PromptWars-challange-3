@@ -1,3 +1,7 @@
+/**
+ * API contract types shared verbatim by server and client.
+ * Key invariant: both sides import these — the wire format cannot drift.
+ */
 import type { ActivityType, Category } from './emissionFactors';
 import type { Period } from './dates';
 

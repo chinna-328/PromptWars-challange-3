@@ -1,3 +1,7 @@
+/**
+ * Data access for the goals table (latest weekly target wins).
+ * Key invariant: prepared statements only, created once at construction.
+ */
 import type { Database, Statement } from 'better-sqlite3';
 
 /** A stored weekly emissions goal. */

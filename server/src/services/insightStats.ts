@@ -1,3 +1,8 @@
+/**
+ * Folds activity data into the WeekStats consumed by the insight rules.
+ * Key invariant: the primary path folds SQL per-type aggregates (O(types),
+ * not O(rows)); the record-based fold exists for tests and must agree.
+ */
 import type { ActivityRecord } from '../../../shared/types';
 import type { Category } from '../../../shared/emissionFactors';
 import type { TypeAggregateRow } from '../db/activityRepo';

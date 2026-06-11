@@ -1,3 +1,8 @@
+/**
+ * Single error boundary for the API (404 + central error handler).
+ * Key invariant: clients only ever see safe, generic messages; full
+ * details are logged server-side. No stack trace ever leaves the process.
+ */
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { AppError } from '../lib/AppError';
 import { logger } from '../lib/logger';

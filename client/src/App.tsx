@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { SkipLink } from './components/SkipLink';
 import { Nav } from './components/Nav';
+import { LeafMark } from './components/icons';
 
 // Route pages are lazy-loaded so each route ships its own chunk.
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -34,7 +35,10 @@ export function App(): JSX.Element {
       <SkipLink />
       <header>
         <div className="brand">
-          <span aria-hidden="true">🌿</span> EcoTrace
+          <LeafMark />
+          <span className="brand-word">
+            Eco<span className="brand-trace">Trace</span>
+          </span>
         </div>
         <Nav />
       </header>

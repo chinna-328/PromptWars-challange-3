@@ -1,3 +1,8 @@
+/**
+ * Zod schemas for the goals API boundary.
+ * Key invariant: targets are positive, finite and bounded before any
+ * service logic runs.
+ */
 import { z } from 'zod';
 
 /**

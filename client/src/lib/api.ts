@@ -1,3 +1,8 @@
+/**
+ * The single typed API client for the frontend — every network call in
+ * the app goes through this module. Key invariant: no raw fetch outside
+ * this file, and every error surfaces as a typed ApiError.
+ */
 import type {
   ActivityInput,
   ActivityListResponse,

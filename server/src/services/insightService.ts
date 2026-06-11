@@ -1,3 +1,8 @@
+/**
+ * Deterministic rule-based insights engine (no external AI dependency).
+ * Key invariant: every rule is a pure function of WeekStats, every
+ * suggestion quantifies its saving in kg CO2e, and output order is stable.
+ */
 import { roundKg } from '../../../shared/calculateEmissions';
 import { EMISSION_FACTORS, CATEGORY_LABELS, type Category } from '../../../shared/emissionFactors';
 import type { Insight } from '../../../shared/types';
@@ -199,6 +204,12 @@ const RULES: Rule[] = [
  *
  * @param input - this week's aggregated stats and last week's total
  * @returns ranked insights (never empty: firstSteps covers the empty week)
+ * @example
+ * // A week dominated by short car trips ranks the cycling swap first:
+ * const insights = computeInsights({ stats, lastWeekKg: 48.2 });
+ * insights[0].id;                      // 'cycle-short-trips'
+ * insights[0].title;                   // 'Cycle or walk your short car trips'
+ * insights[0].estimatedWeeklySavingKg; // e.g. 2.4
  */
 export function computeInsights(input: InsightInput): Insight[] {
   return RULES.map((rule) => rule(input.stats, input))
